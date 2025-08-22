@@ -21,7 +21,7 @@ module fundchain_addr::fundchain {
         vaults: table::Table<u64, NGOVault>,
     }
 
-    public fun module_address(): address { @FundChain_addr }
+    public fun module_address(): address { @fundchain_addr }
 
     public entry fun init(deployer: &signer) {
         let addr = signer::address_of(deployer);
@@ -31,32 +31,35 @@ module fundchain_addr::fundchain {
     }
 
     public entry fun create_vault(
-        ngo: &signer,
-        project_id: u64,
-        match_amount: u64,
-        min_months: u8,
-        payment: coin::Coin<AptosCoin>
-    ) acquires VaultRegistry {
+    ngo: &signer,
+    project_id: u64,
+    match_amount: u64,
+    min_months: u8
+    // The 'payment: coin::Coin<AptosCoin>' parameter is removed
+) acquires VaultRegistry {
 
-        assert!(match_amount > 0, 10);
-        assert!(min_months > 0, 11);
-        assert!(coin::value(&payment) == match_amount, 12);
+    assert!(match_amount > 0, 10);
+    assert!(min_months > 0, 11);
 
-        let reg = borrow_global_mut<VaultRegistry>(module_address());
-        let id = reg.next_id; reg.next_id = id + 1;
+    // Create the 'payment' coin by withdrawing directly from the sender's (ngo's) account.
+    let payment = coin::withdraw<AptosCoin>(ngo, match_amount);
 
-        let vault = NGOVault {
-            id,
-            ngo: signer::address_of(ngo),
-            project_id,
-            match_amount,
-            min_months,
-            fulfilled_months: 0,
-            is_active: true,
-            funds: payment,
-        };
-        table::add(&mut reg.vaults, id, vault);
-    }
+    let reg = borrow_global_mut<VaultRegistry>(module_address());
+    let id = reg.next_id;
+    reg.next_id = id + 1;
+
+    let vault = NGOVault {
+        id,
+        ngo: signer::address_of(ngo),
+        project_id,
+        match_amount,
+        min_months,
+        fulfilled_months: 0,
+        is_active: true,
+        funds: payment, // Store the newly created coin object
+    };
+    table::add(&mut reg.vaults, id, vault);
+}
 
     public entry fun record_month(ngo: &signer, vault_id: u64) acquires VaultRegistry {
         let reg = borrow_global_mut<VaultRegistry>(module_address());
@@ -76,7 +79,7 @@ module fundchain_addr::fundchain {
         assert!(v.fulfilled_months >= v.min_months, 32);
         assert!(coin::value(&v.funds) == v.match_amount, 33);
 
-        let payout = std::mem::replace(&mut v.funds, coin::zero<AptosCoin>());
+        let payout = coin::extract(&mut v.funds, v.match_amount);
         v.is_active = false;
         coin::deposit<AptosCoin>(addr, payout);
     }
