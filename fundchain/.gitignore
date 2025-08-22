@@ -1,6 +1,4 @@
 # Aptos related files
-.aptos
-.env
 contract/build
 
 # Logs
