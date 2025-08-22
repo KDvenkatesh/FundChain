@@ -1,0 +1,12 @@
+[package]
+name = "FundChain"
+version = "1.0.0"
+authors = []
+
+[addresses]
+fundchain_addr = "0x7595cb5d52866e4c8201c8902e1a82155d56f6c2540e19294eb049218d9f413b"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", rev = "mainnet", subdir = "aptos-framework" }
+
+[dev-dependencies]
